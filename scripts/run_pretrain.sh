@@ -1,8 +1,13 @@
 #! /bin/bash
 
+export CUDA_VISIBLE_DEVICES=6,7
 export WANDB_API_KEY=
 export WANDB_MODE=online
-export WANDB_PROJECT=
+export WANDB_PROJECT=ISE
+# export MASTER_PORT=29500 # for multiple expr on the same machine
+
+cd /ldap_shared/home/s_ljy/Projects/CVPR2022-Pretrained-ViT-PyTorch # change to project directory
+conda activate vit_env  # activate conda environment
 
 CLASSES=1000
 SAVE_ROOT=./dataset/MVFractalDB-${CLASSES}/images
@@ -15,7 +20,7 @@ LR=1.0e-3
 # name of dataset
 DATA_NAME=ExFractalDB
 # num of epochs
-EPOCHS=40
+EPOCHS=40       # how many epochs to pretrain??
 # path to train dataset
 SOURCE_DATASET=${SAVE_ROOT}
 # output dir path

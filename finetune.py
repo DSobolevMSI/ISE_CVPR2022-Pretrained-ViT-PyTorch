@@ -24,7 +24,8 @@ import torchvision.utils
 from torch.nn.parallel import DistributedDataParallel as NativeDDP
 
 from timm.data import create_dataset, resolve_data_config, Mixup, FastCollateMixup, AugMixDataset
-from timm.models import resume_checkpoint, load_checkpoint, convert_splitbn_model, model_parameters
+from timm.models import resume_checkpoint, load_checkpoint, model_parameters
+from timm.layers import convert_splitbn_model  # new in timm 1.0+
 from timm.utils import *
 from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy, JsdCrossEntropy
 from timm.optim import create_optimizer_v2, optimizer_kwargs
@@ -68,7 +69,7 @@ parser.add_argument('--dataset', '-d', metavar='NAME', default='',
                     help='dataset type (default: ImageFolder/ImageTar if empty)')
 parser.add_argument('--train-split', metavar='NAME', default='train',
                     help='dataset train split (default: train)')
-parser.add_argument('--val-split', metavar='NAME', default='validation',
+parser.add_argument('--val-split', metavar='NAME', default='val',
                     help='dataset validation split (default: validation)')
 parser.add_argument('--model', default='deit_tiny_patch16_224', type=str, metavar='MODEL',
                     help='Name of model to train (default: deit_tiny_patch16_224)')

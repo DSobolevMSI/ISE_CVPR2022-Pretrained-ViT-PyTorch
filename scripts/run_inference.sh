@@ -1,8 +1,5 @@
 #! /bin/bash
-
-export WANDB_API_KEY=
-export WANDB_MODE=online
-export WANDB_PROJECT=
+export CUDA_VISIBLE_DEVICES=4
 
 # number of classes
 CLASSES=32
@@ -20,7 +17,6 @@ python inference.py \
     --data-dir ${SOURCE_DATASET} \
     --model deit_${MODEL}_patch16_224 \
     --num-classes ${CLASSES} \
-    --class-map ./dataset/SO32_class_map.txt \
-    --checkpoint ./check_points/base/32/finetune/finetune_deit_base_SO3232_1.0e-3/model_best.pth.tar  \
-    --results-dir ./inference_results/${DATA_NAME}${CLASSES}    \
+    --checkpoint ./check_points/base/32/finetune/finetune_exfractal_deit_base_SO32_1.0e-3/model_best.pth.tar  \
+    --results-dir ./inference_results/exfractal_${DATA_NAME}${CLASSES}    \
     --fullname --include-index

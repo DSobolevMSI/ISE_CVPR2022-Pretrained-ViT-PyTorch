@@ -32,7 +32,7 @@ EPOCHS=1
 # path to train dataset
 SOURCE_DATASET=${SAVE_ROOT}
 # output dir path
-OUT_DIR=./cheak_points/${MODEL}/${CLASSES}/pretrain
+OUT_DIR=./check_points/${MODEL}/${CLASSES}/pretrain
 # num of GPUs
 NGPUS=5
 # num of processes per node
@@ -68,7 +68,7 @@ CP_PATH=${OUT_DIR}/pretrain_deit_${MODEL}_${PRE_DATA_NAME}${PRE_CLASSES}_${PRE_L
 
 # ======== parameter for fine-tuning ========
 # output dir path
-OUT_DIR=./cheak_points/${MODEL}/${CLASSES}/finetune
+OUT_DIR=./check_points/${MODEL}/${CLASSES}/finetune
 # path to fine-tune dataset
 SOURCE_DATASET_DIR="/home/yamada/Document/datasets/CIFAR10"
 # name of dataset

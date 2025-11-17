@@ -3,7 +3,7 @@ VARIANCE_THRESHOLD=0.05
 CLASSES=10
 PARAM_PATH=./datasets/MVFractalDB/3DIFS_params/MVFractalDB-${CLASSES}
 MODEL_SAVE_PATH=./datasets/MVFractalDB/3D-model/MVFractalDB-${CLASSES}
-SAVE_ROOT=./datasets/MVFractalDB/images/MVFractalDB-${CLASSES}
+SAVE_ROOT=./datasets/MVFractalDB/images/MVFractalDB-${CLASSES}/images
 
 cd ./exfractaldb_render
 
@@ -31,7 +31,7 @@ EPOCHS=2
 # path to train dataset
 SOURCE_DATASET=${SAVE_ROOT}
 # output dir path
-OUT_DIR=./cheak_points/${MODEL}/${CLASSES}/pretrain
+OUT_DIR=./check_points/${MODEL}/${CLASSES}/pretrain
 # num of GPUs
 NGPUS=4
 # num of processes per node
@@ -70,7 +70,7 @@ CP_PATH=${OUT_DIR}/pretrain_deit_${MODEL}_${PRE_DATA_NAME}${PRE_CLASSES}_${PRE_L
 
 # ======== parameter for fine-tuning ========
 # output dir path
-OUT_DIR=./cheak_points/${MODEL}/${CLASSES}/finetune
+OUT_DIR=./check_points/${MODEL}/${CLASSES}/finetune
 # path to fine-tune dataset
 SOURCE_DATASET_DIR=/groups/gcd50691/datasets/cifar10
 # name of dataset
