@@ -105,14 +105,21 @@ def main(base_path, csv_file, class_map_file, abbrev_file=None):
         'per_class_acc': [per_class_acc[i] for i in range(num_classes)],
         'num_samples': [per_class_support[i] for i in range(num_classes)]
     })
-    # Add Class-Averaged row at the end
+    # Add Class-Averaged row
     avg_row = pd.DataFrame({
         'class_name': ['Class-Averaged'],
         'class_id': [-1],  # Placeholder for average
         'per_class_acc': [class_avg_acc],
         'num_samples': [total_samples]  # Total samples for reference
     })
-    per_class_df = pd.concat([per_class_df, avg_row], ignore_index=True)
+    # Add Overall Top-1 row
+    overall_row = pd.DataFrame({
+        'class_name': ['Overall Top-1'],
+        'class_id': [-1],  # Placeholder for overall
+        'per_class_acc': [overall_acc],
+        'num_samples': [total_samples]  # Total samples for reference
+    })
+    per_class_df = pd.concat([per_class_df, avg_row, overall_row], ignore_index=True)
 
     # save detailed results to CSV
     output_csv = os.path.join(base_path, 'evaluation_results.csv')

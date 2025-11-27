@@ -5,12 +5,12 @@ import matplotlib.pyplot as plt
 import os
 from typing import List, Dict
 
-def load_seed_results_from_csvs(seed_csv_files: List[str], dataset_groups: List[str], num_seeds: int = 5) -> Dict[str, List[float]]:
+def load_seed_results_from_csvs(seed_csv_files: List[str], dataset_groups: List[str], num_seeds: int = 5) -> Dict[str, Dict[str, List[float]]]:
     """
-    Load Class-Averaged acc from a list of CSV files, grouped by datasets.
+    Load both Class-Averaged and Overall Top-1 acc from a list of CSV files, grouped by datasets.
     Assumes: len(seed_csv_files) == len(dataset_groups) == num_datasets * num_seeds
     dataset_groups: e.g., ['exfractal', 'exfractal', ..., 'imagenet', ...] (repeat per group)
-    Returns: dict: dataset -> list of acc values (one per seed)
+    Returns: dict: dataset -> {'class_avg': list of acc values, 'overall': list of acc values} (one per seed)
     """
     if len(seed_csv_files) != len(dataset_groups):
         raise ValueError("seed_csv_files and dataset_groups must have same length")
@@ -22,29 +22,40 @@ def load_seed_results_from_csvs(seed_csv_files: List[str], dataset_groups: List[
     results = {}
     for dataset in set(dataset_groups):
         dataset_files = [f for i, f in enumerate(seed_csv_files) if dataset_groups[i] == dataset]
-        accs = []
+        class_avg_accs = []
+        overall_accs = []
         for csv_file in dataset_files:
             if not os.path.exists(csv_file):
                 print(f"Warning: CSV not found: {csv_file}. Skipping.")
                 continue
             df = pd.read_csv(csv_file)
+            # Load Class-Averaged
             avg_row = df[df['class_name'] == 'Class-Averaged']
             if len(avg_row) == 0:
                 print(f"Warning: No Class-Averaged row in {csv_file}. Skipping.")
                 continue
             class_avg_acc = avg_row['per_class_acc'].iloc[0]
-            accs.append(class_avg_acc)
-        results[dataset] = accs
-        if len(accs) != num_seeds:
-            print(f"Warning: Expected {num_seeds} seeds for {dataset}, found {len(accs)}")
+            class_avg_accs.append(class_avg_acc)
+            # Load Overall Top-1
+            overall_row = df[df['class_name'] == 'Overall Top-1']
+            if len(overall_row) == 0:
+                print(f"Warning: No Overall Top-1 row in {csv_file}. Skipping.")
+                continue
+            overall_acc = overall_row['per_class_acc'].iloc[0]
+            overall_accs.append(overall_acc)
+        results[dataset] = {'class_avg': class_avg_accs, 'overall': overall_accs}
+        if len(class_avg_accs) != num_seeds:
+            print(f"Warning: Expected {num_seeds} seeds for {dataset}, found {len(class_avg_accs)}")
     
     return results
 
-def plot_bar_seeds(seed_results: Dict[str, List[float]], output_path: str):
-    """Plot bar chart of mean Class-Averaged acc across seeds for each dataset, with std error bars."""
-    datasets = list(seed_results.keys())
-    means = [np.mean(accs) for accs in seed_results.values()]
-    stds = [np.std(accs) for accs in seed_results.values()]
+def plot_bar_seeds(seed_results: Dict[str, Dict[str, List[float]]], output_path: str, metric: str = 'class_avg'):
+    """Plot bar chart of mean acc across seeds for each dataset, with std error bars."""
+    fixed_order = ['imagenet', 'exfractal', 'rcdb']
+    datasets = [ds for ds in fixed_order if ds in seed_results]
+    accs_list = [seed_results[ds][metric] for ds in datasets]
+    means = [np.mean(accs) for accs in accs_list]
+    stds = [np.std(accs) for accs in accs_list]
     
     if len(datasets) == 0:
         raise ValueError("No results to plot")
@@ -66,17 +77,17 @@ def plot_bar_seeds(seed_results: Dict[str, List[float]], output_path: str):
     
     # Formatting
     ax.set_xlabel('Dataset', fontsize=12)
-    ax.set_ylabel('Class-Averaged Accuracy (%)', fontsize=12)
-    ax.set_title('Mean Class-Averaged Accuracy Across Random Seeds (with Std)', fontsize=14)
+    ax.set_ylabel(f'{metric.replace("_", " ").title()} Accuracy (%)', fontsize=12)
+    ax.set_title(f'Mean {metric.replace("_", " ").title()} Accuracy Across Random Seeds (with Std)', fontsize=14)
     ax.set_xticks(x_pos)
     ax.set_xticklabels(datasets, rotation=45, ha='right')
-    ax.set_ylim(75, max(max(means + [0]) + max(stds + [0]*5),90))  # Add some headroom
+    ax.set_ylim(max(means+[0])-10, max(means + [0]) + max(max(stds + [0])*2,2))  # Add some headroom
     ax.grid(True, alpha=0.3)
     
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"Bar plot saved to {output_path}")
+    print(f"Bar plot for {metric} saved to {output_path}")
 
 if __name__ == "__main__":
     # Hardcoded CSV paths: 3 datasets x 5 seeds = 15 files
@@ -115,23 +126,32 @@ if __name__ == "__main__":
     ]
     
     num_seeds = 5  # Seeds per dataset
-    output_path = os.path.join(base_path,"bar_seeds.png")
+    output_path_class = os.path.join(base_path, "bar_class_avg.png")
+    output_path_overall = os.path.join(base_path, "bar_overall.png")
     
     # Load results
     seed_results = load_seed_results_from_csvs(seed_csv_files, dataset_groups, num_seeds)
     
-    # Plot
-    plot_bar_seeds(seed_results, output_path)
+    # Plot for Class-Averaged
+    plot_bar_seeds(seed_results, output_path_class, 'class_avg')
+    
+    # Plot for Overall Top-1
+    plot_bar_seeds(seed_results, output_path_overall, 'overall')
     
     # Print summary table
     print("\n=== Summary Table (Seeds) ===")
+    fixed_order = ['imagenet', 'exfractal', 'rcdb']
     summary_data = []
-    for dataset, accs in seed_results.items():
-        if accs:  # Only if has data
-            mean_acc = np.mean(accs)
-            std_acc = np.std(accs)
-            summary_data.append([dataset, f"{mean_acc:.2f} ± {std_acc:.2f}%"])
+    for dataset in fixed_order:
+        if dataset in seed_results:
+            class_accs = seed_results[dataset]['class_avg']
+            overall_accs = seed_results[dataset]['overall']
+            if class_accs and overall_accs:  # Only if has data
+                class_mean = np.mean(class_accs)
+                class_std = np.std(class_accs)
+                overall_mean = np.mean(overall_accs)
+                overall_std = np.std(overall_accs)
+                summary_data.append([dataset, f"{class_mean:.2f} ± {class_std:.2f}%", f"{overall_mean:.2f} ± {overall_std:.2f}%"])
     if summary_data:
-        import pandas as pd  # Import here if not already
-        summary_df = pd.DataFrame(summary_data, columns=['Dataset', 'Mean ± Std Acc'])
+        summary_df = pd.DataFrame(summary_data, columns=['Dataset', 'Class-Avg Mean ± Std', 'Overall Top-1 Mean ± Std'])
         print(summary_df.to_string(index=False))
