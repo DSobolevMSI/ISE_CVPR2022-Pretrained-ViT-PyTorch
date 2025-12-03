@@ -36,6 +36,9 @@ from models.factory import create_model, safe_model_name
 from scheduler.scheduler_factory import create_scheduler
 from utils.summary import original_update_summary
 
+import numpy as np
+from sklearn.metrics import confusion_matrix
+
 try:
     from apex import amp
     from apex.parallel import DistributedDataParallel as ApexDDP
@@ -561,6 +564,42 @@ def main():
         _logger.info('*** Best metric: {0} (epoch {1})'.format(best_metric, best_epoch))
 
 
+@torch.no_grad()
+def calculate_per_class_accuracy(model, loader, args, num_classes=None, amp_autocast=suppress):
+    """
+    calculate top-1 acc for each class and return macro-average -- class average accuracy
+    """
+    if num_classes is None:
+        num_classes = args.num_classes
+
+    model.eval()
+    all_preds = []
+    all_targets = []
+
+    for input, target in loader:
+        if not args.prefetcher:
+            input = input.cuda()
+            target = target.cuda()
+
+        with amp_autocast():
+            output = model(input)
+            if isinstance(output, (tuple, list)):
+                output = output[0]
+
+        pred = output.argmax(dim=1)
+        all_preds.append(pred.cpu())
+        all_targets.append(target.cpu())
+
+    all_preds = torch.cat(all_preds).numpy()
+    all_targets = torch.cat(all_targets).numpy()
+
+    cm = confusion_matrix(all_targets, all_preds, labels=np.arange(num_classes))
+    per_class_acc = cm.diagonal() / (cm.sum(axis=1) + 1e-8)     # eps = 1e-8 to avoid zero division
+    class_avg_acc = per_class_acc.mean() * 100.0   # macro-average
+
+    return class_avg_acc, per_class_acc
+
+
 def train_one_epoch(
         epoch, model, loader, optimizer, loss_fn, args,
         lr_scheduler=None, saver=None, output_dir=None, amp_autocast=suppress,
@@ -719,6 +758,20 @@ def validate(model, loader, loss_fn, args, amp_autocast=suppress, log_suffix='')
                         loss=losses_m, top1=top1_m, top5=top5_m))
 
     metrics = OrderedDict([('loss', losses_m.avg), ('top1', top1_m.avg), ('top5', top5_m.avg)])
+
+    # === Add class-average accuracy ===
+    if args.rank == 0:
+        try:
+            class_avg_acc, per_class = calculate_per_class_accuracy(
+                model, loader, args, num_classes=args.num_classes, amp_autocast=amp_autocast)
+            metrics['class_avg'] = class_avg_acc
+            _logger.info(f' * Class-Average Acc {class_avg_acc:.3f}')
+        except Exception as e:
+            _logger.warning(f"Failed to compute class-average acc: {e}")
+            metrics['class_avg'] = 0.0
+    else:
+        metrics['class_avg'] = 0.0
+    # ======================================
 
     return metrics
 
