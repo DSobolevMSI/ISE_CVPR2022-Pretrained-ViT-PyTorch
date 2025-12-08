@@ -299,8 +299,8 @@ For reproduction of the paper, you can run job script ```scripts/run_finetune.sh
 
 > **Note**
 > - cd to your project folder
-> - ${SOURCE_DATASET}: SO32 Dataset folder - train split
-> - ${PRETRAIN}: mark which pretrained model to use, and point the path of the pretrained model
+> - `SOURCE_DATASET`: SO32 Dataset folder - train split
+> - `PRETRAIN`: mark which pretrained model to use, and point the path of the pretrained model
 > - Training parameters are already set as the same as in the original paper
 
 ## Inference (New)
@@ -312,9 +312,9 @@ It will generate a .csv file to store the classification results for all test sa
 
 > **Note**
 > - cd to your project folder
-> - ${SOURCE_DATASET}: SO32 Dataset folder - val/test split
-> - ${RESULTS_DIR}: inference results directory
-> - If you want to utilize GradCAM to, uncomment the '--enable-gradcam' line and set '--viz-dir'
+> - `SOURCE_DATASET`: SO32 Dataset folder - val/test split
+> - `RESULTS_DIR`: inference results directory
+> - If you want to utilize GradCAM to, uncomment the ```--enable-gradcam``` line and set ```--viz-dir```
 
 ## Evaluation (New)
 ### ISE Group Updates
@@ -325,24 +325,24 @@ It will calculate the accuracy for each class, the overall top-1 accuracy, and t
 
 > **Note**
 > - cd to your project folder
-> - ${RESULTS_DIR}: inference result directory
-> - ${CSV_FILE}: .csv file path (under the inference result directory)
+> - `RESULTS_DIR`: inference result directory
+> - `CSV_FILE`: .csv file path (under the inference result directory)
 
 ## Result Analysis - Plots (New)
 ### ISE Group Updates
 
 Draw Violin Plot for single/multiple experiments: run ```scripts/run_plots.sh```
-> - --csv_files: add the results CSV files path
-> - --model_names: for each result give a name to show in the plot
+> - `--csv_files`: add the results CSV files path
+> - `--model_names`: for each result give a name to show in the plot
 
 
 Draw Bar Plot for single/multiple experiments (five seeds test): run ```draw_seed_plots.py```
-> - 'seed_csv_files' in main(): add the results CSV files path
-> - 'dataset_groups' in main(): mark the experiment group (e.g. 'rcdb')
+> - `seed_csv_files` in main(): add the results CSV files path
+> - `dataset_groups` in main(): mark the experiment group (e.g. 'rcdb')
 
 
 Draw GradCAM Plot for single experiment: run ```draw_gradcam_plot.py```
-> - 'VIS_FOLDER' in make_gradcam_gallery(): change to gradcam visualization directory
+> - `VIS_FOLDER`: in make_gradcam_gallery(): change to gradcam visualization directory
 
 
 ## Acknowledgements
