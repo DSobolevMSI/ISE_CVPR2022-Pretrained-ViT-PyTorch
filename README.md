@@ -12,6 +12,8 @@
   - [Pre-training with shard dataset](#pre-training-with-shard-dataset)
   - [Pre-trained models](#pre-trained-models)
 - [Fine-Tuning](#fine-tuning)
+- [Inference](#inference)
+- [Evaluation](#evaluation)
 - [Acknowledgements](#acknowledgements)
 - [Terms of use](#terms-of-use)
 
@@ -35,9 +37,12 @@ Hirokatsu Kataoka, Ryo Hayamizu, Ryosuke Yamada, Kodai Nakashima, Sora Takashima
 * Related project "Can Vision Transformers Learn without Natural Images?" was released. We achieved to train vision transformers (ViT) without natural images. [[Project](https://hirokatsukataoka16.github.io/Vision-Transformers-without-Natural-Images/)] [[PDF](https://arxiv.org/abs/2103.13023)] [[Code](https://github.com/nakashima-kodai/FractalDB-Pretrained-ViT-PyTorch)] -->
 
 
-**Update (June 13, 2022)**
-* ExFractalDB and RCDB Construction & Pre-training & Fine-tuning codes
-* Downloadable pre-training models [[Link](https://drive.google.com/drive/folders/1ikNUxJoMCx3Lx2TMrXfLdIwI6wwK5w_W?usp=sharing)]
+**ISE Group Updates (Dec 3, 2025)**
+* Add *inference.py* code for model inference
+* Add *evaluation.py* code for results evaluation, including class avg acc calculation and confusion matrix
+* Add plot codes *draw_gradcam_plot.py*, *draw_plots.py*, and *draw_seed_plots.py*
+* Implement GradCAM in *gradcam.py* for visual explaination and analysis
+* Fix enviroment setting problems in *py310.yaml*
 
 ## Citation
 
@@ -53,20 +58,20 @@ If you use this code, please cite the following paper:
 }
 ``` 
 
-## Requirements
+## Requirements (Updated)
 
-* Python 3.x (worked at 3.7)
-* Pytorch 1.x (worked at 1.6.0)
-* CUDA (worked at 10.2)
-* CuDNN (worked at 8.0)
-* OpenMPI (worked at 4.0.5)
-* Graphic board (worked at single/four NVIDIA V100)
+* Python 3.10
+* Pytorch 2.7
+* CUDA (worked at 11.8)
+* CuDNN (worked at 9.1)
+* Graphic board (worked at NVIDIA 4090)
+* OpenMPI 1.0 (if using DDP)
 
 Please install packages with the following command. (use conda env)
 
 ```bash
-$ conda env create -f conda_requirements.yaml
-$ conda activate cvpr2022_env
+$ conda env create -f py310.yml
+$ conda activate vit_new
 ```
 
 * Fine-tuning datasets
@@ -258,7 +263,7 @@ $ mpirun -npernode 4 -np 4 \
     --pretrained-path /PATH/TO/rcdb_21k_base.pth.tar
 ```
 
-## Fine-tuning
+## Fine-tuning (Updated)
 
 Run the python script ```finetune.py```, you additionally train other datasets from your pre-trained model.
 
@@ -287,6 +292,58 @@ Basically, you can run the python script ```finetune.py``` with the following co
 Or you can run the job script ```scripts/finetune.sh``` (support multiple nodes training with OpenMPI).
 
 Please see the script and code files for details on each arguments.
+
+### ISE Group Updates
+
+For reproduction of the paper, you can run job script ```scripts/run_finetune.sh```.
+
+> **Note**
+> - cd to your project folder
+> - ${SOURCE_DATASET}: SO32 Dataset folder - train split
+> - ${PRETRAIN}: mark which pretrained model to use, and point the path of the pretrained model
+> - Training parameters are already set as the same as in the original paper
+
+## Inference (New)
+### ISE Group Updates
+
+To inference the reproduction results of the paper, you can run job script ```scripts/run_inference.sh```.
+
+It will generate a .csv file to store the classification results for all test samples.
+
+> **Note**
+> - cd to your project folder
+> - ${SOURCE_DATASET}: SO32 Dataset folder - val/test split
+> - ${RESULTS_DIR}: inference results directory
+> - If you want to utilize GradCAM to, uncomment the '--enable-gradcam' line and set '--viz-dir'
+
+## Evaluation (New)
+### ISE Group Updates
+
+To evaluate the reproduction results of the paper, you can run job script ```scripts/run_inference.sh```.
+
+It will calculate the accuracy for each class, the overall top-1 accuracy, and the class average accuracy, and generate a confusion matrix plot.
+
+> **Note**
+> - cd to your project folder
+> - ${RESULTS_DIR}: inference result directory
+> - ${CSV_FILE}: .csv file path (under the inference result directory)
+
+## Result Analysis - Plots (New)
+### ISE Group Updates
+
+Draw Violin Plot for single/multiple experiments: run ```scripts/run_plots.sh```
+> - --csv_files: add the results CSV files path
+> - --model_names: for each result give a name to show in the plot
+
+
+Draw Bar Plot for single/multiple experiments (five seeds test): run ```draw_seed_plots.py```
+> - 'seed_csv_files' in main(): add the results CSV files path
+> - 'dataset_groups' in main(): mark the experiment group (e.g. 'rcdb')
+
+
+Draw GradCAM Plot for single experiment: run ```draw_gradcam_plot.py```
+> - 'VIS_FOLDER' in make_gradcam_gallery(): change to gradcam visualization directory
+
 
 ## Acknowledgements
 
