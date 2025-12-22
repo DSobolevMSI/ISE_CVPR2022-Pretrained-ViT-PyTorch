@@ -60,6 +60,30 @@ def checkpoint_filter_fn(state_dict, model):
         out_dict[k] = v
     return out_dict
 
+
+# CHECKPOINT: match key for DeiTAux
+def checkpoint_filter_fn_deitaux(state_dict, model):
+    out_dict = {}
+    if 'model' in state_dict:
+        state_dict = state_dict['model']
+    for k, v in state_dict.items():
+        if k.startswith('head.'):
+            continue
+        # original
+        if 'patch_embed.proj.weight' in k and len(v.shape) < 4:
+            O, I, H, W = model.patch_embed.proj.weight.shape
+            v = v.reshape(O, -1, H, W)
+        elif k == 'pos_embed' and v.shape != model.pos_embed.shape:
+            v = resize_pos_embed(
+                v, 
+                model.pos_embed, 
+                getattr(model, 'num_tokens', 1), 
+                model.patch_embed.grid_size
+            )
+        out_dict[k] = v
+    return out_dict
+
+
 def load_state_dict(checkpoint_path, use_ema=False):
     if checkpoint_path and os.path.isfile(checkpoint_path):
         checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
@@ -82,11 +106,11 @@ def load_state_dict(checkpoint_path, use_ema=False):
         _logger.error("No checkpoint found at '{}'".format(checkpoint_path))
         raise FileNotFoundError()
 
-def load_original_pretrained_model(model, pretrained_path, use_ema=False, strict=True):
+def load_original_pretrained_model(model, pretrained_path, use_ema=False, strict=True, edge_aux=False, freeze=False):
     state_dict = load_state_dict(pretrained_path, use_ema)
-    _load_original_pretrained(model, state_dict, strict=strict)
+    _load_original_pretrained(model, state_dict, strict=strict, edge_aux=edge_aux, freeze=freeze)
 
-def _load_original_pretrained(model, state_dict, strict=True, default_cfg=None):
+def _load_original_pretrained(model, state_dict, strict=True, default_cfg=None, edge_aux=False, freeze=False):
     """ Load pretrained checkpoint from local saved model path
     """
     default_cfg = default_cfg or getattr(model, 'default_cfg', None) or {}
@@ -101,8 +125,36 @@ def _load_original_pretrained(model, state_dict, strict=True, default_cfg=None):
             del state_dict[classifier_name + '.bias']
         
     # if input size is different from default input size, delete patch embed layers in pre_trained params.
-    new_state_dict = checkpoint_filter_fn(state_dict, model)
+    # CHECKPOINT: different filter for DeiTAux
+    if edge_aux:
+        new_state_dict = checkpoint_filter_fn_deitaux(state_dict, model)
+    else:
+        new_state_dict = checkpoint_filter_fn(state_dict, model)
 
     strict = False
 
-    model.load_state_dict(new_state_dict, strict=strict)
+    # 3. 加载权重到模型
+    msg=model.load_state_dict(new_state_dict, strict=strict)
+    print(f"Pretrained weights loaded.") 
+    # msg.missing_keys 里面应该是 'head.weight', 'head.bias', 'edge_embed.weight', 'aux_head.weight' 等
+
+    if freeze:
+        frozen_layers = []
+        trainable_layers = []
+
+        for name, param in model.named_parameters():
+            # 核心逻辑：如果参数名在加载的字典里 -> 冻结
+            if name in new_state_dict:
+                param.requires_grad = False
+                frozen_layers.append(name)
+            else:
+                # 如果不在字典里（说明是新初始化的，如 edge_embed, head） -> 训练
+                param.requires_grad = True
+                trainable_layers.append(name)
+
+        print(f"Froze {len(frozen_layers)} parameters (from pretrained).")
+        print(f"Trainable {len(trainable_layers)} parameters (newly initialized):")
+        for name in trainable_layers:
+            print(f"  -> {name}") # 打印出来确认一下，应该是 head, edge_embed 等
+
+

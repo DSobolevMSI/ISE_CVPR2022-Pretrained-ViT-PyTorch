@@ -18,9 +18,12 @@ import torch
 import cv2
 from skimage import io
 
-from timm.data import create_dataset, create_loader, resolve_data_config, ImageNetInfo, infer_imagenet_subset
+from timm.data import resolve_data_config, ImageNetInfo, infer_imagenet_subset
+from data.loader import create_loader
+# CHECKPOINT: dataset load canny edge images
+from data.dataset import create_dataset
 from timm.layers import apply_test_time_pool
-from timm.models import create_model
+from models.factory import create_model
 from timm.utils import AverageMeter, setup_default_logging, set_jit_fuser, ParseKwargs
 
 try:
@@ -154,12 +157,20 @@ parser.add_argument('--exclude-output', action='store_true', default=False,
                     help='exclude logits/probs from results, just indices. topk must be set !=0.')
 parser.add_argument('--no-console-results', action='store_true', default=False,
                     help='disable printing the inference results to the console')
+parser.add_argument('--no-prefetcher', action='store_true', default=False,
+                    help='disable fast prefetcher')
 
 # New arguments for GradCAM
 parser.add_argument('--enable-gradcam', action='store_true', default=False,
                     help='Enable GradCAM visualization using ground truth labels as targets')
 parser.add_argument('--viz-dir', type=str, default=None,
                     help='Directory to save GradCAM overlay images (required if --enable-gradcam)')
+
+# CHECKPOINT: dataset load canny edge images
+parser.add_argument('--edge-aux', action='store_true', help='Enable edge auxiliary branch')
+parser.add_argument('--edge-aux-weight', type=float, default=0.4, help='Weight for edge aux loss')
+parser.add_argument('--use-edge-attn', action='store_true', help='Use edge as attention guide')
+parser.add_argument('--use-edge-fusion', action='store_true', help='Use edge as late fusion')
 
 
 def gen_cam(image, mask, alpha=0.5):
@@ -193,6 +204,7 @@ def main():
     args = parser.parse_args()
     # might as well try to do something useful...
     args.pretrained = args.pretrained or not args.checkpoint
+    args.prefetcher = not args.no_prefetcher
 
     if args.enable_gradcam and not args.viz_dir:
         raise ValueError("--viz-dir is required when --enable-gradcam is set")
@@ -235,6 +247,7 @@ def main():
         in_chans=in_chans,
         pretrained=args.pretrained,
         checkpoint_path=args.checkpoint,
+        edge_aux=args.edge_aux,
         **args.model_kwargs,
     )
     if args.num_classes is None:
@@ -268,25 +281,31 @@ def main():
         model = torch.nn.DataParallel(model, device_ids=list(range(args.num_gpu)))
 
     root_dir = args.data or args.data_dir
+    # CHECKPOINT: dataset load canny edge images
     dataset = create_dataset(
         root=root_dir,
         name=args.dataset,
         split=args.split,
         class_map=args.class_map,
+        edge_aux=args.edge_aux
     )
 
     if test_time_pool:
         data_config['crop_pct'] = 1.0
 
     workers = 1 if 'tfds' in args.dataset or 'wds' in args.dataset else args.workers
+    # CHECKPOINT: dataset load canny edge images
     loader = create_loader(
         dataset,
+        input_size=data_config['input_size'],
         batch_size=args.batch_size,
-        use_prefetcher=True,
-        num_workers=workers,
-        device=device,
-        img_dtype=model_dtype or torch.float32,
-        **data_config,
+        is_training=False,
+        use_prefetcher=args.prefetcher,
+        interpolation=data_config['interpolation'],
+        mean=data_config['mean'],
+        std=data_config['std'],
+        num_workers=args.workers,
+        crop_pct=data_config['crop_pct'],
     )
 
     to_label = None
@@ -313,10 +332,38 @@ def main():
     all_targets = []  # For GradCAM
     use_probs = args.output_type == 'prob'
     with torch.inference_mode():
-        for batch_idx, (input, target) in enumerate(loader):
+        for batch_idx, batch in enumerate(loader):
+            # CHECKPOINT: check batch and seperate edge
+            if isinstance(batch[0], tuple):  # ((rgb, edge), target)
+                (input_rgb, input_edge), target = batch
+            elif args.edge_aux:  # [[rgb, edge], target]
+                target = batch[1]
+                input_rgb = batch[0][0]
+                input_edge = batch[0][1]
+            else:  # (input, target)
+                input_rgb, target = batch
+                input_edge = None
 
+            if not args.prefetcher:
+                input_rgb, target = input_rgb.cuda(), target.cuda()
+                if input_edge is not None:
+                    input_edge = input_edge.cuda()
+               
             with amp_autocast():
-                output = model(input)
+                # CHECKPOINT: loss for edge
+                if args.edge_aux:
+                    if args.use_edge_attn:
+                        output = model(input_rgb, attn_mask=input_edge)
+                    elif args.use_edge_fusion:
+                        output = model(input_rgb, input_edge, use_fusion=args.use_edge_fusion)
+                    else:
+                        # TODO: use aux for infer?
+                        output, edge_output = model(input_rgb, input_edge)
+                        # output = output + args.edge_aux_weight * edge_output
+                else:
+                    output = model(input_rgb)
+                if isinstance(output, (tuple, list)):
+                    output = output[0]
 
             if use_probs:
                 output = output.softmax(-1)
@@ -400,8 +447,7 @@ def main():
     # GradCAM visualization if enabled
     if args.enable_gradcam:
         _logger.info('Starting GradCAM visualization...')
-        target_layer = model.blocks[-1].norm1  # Adjust if needed for your model (e.g., vit, swin)
-        # target_layer = model.stages[-1].blocks[-1].conv_dw   # convnext
+        target_layer = model.blocks[-1].norm1  # Adjust if needed for your model (e.g., model.norm)
         grad_cam = GradCam(model, target_layer)
         os.makedirs(args.viz_dir, exist_ok=True)
         dtype = model_dtype if model_dtype is not None else torch.float32

@@ -1,9 +1,5 @@
 """ Loader Factory, Fast Collate, CUDA Prefetcher
 Modification of timm's code.
-Title: pytorch-image-models
-Author: Ross Wightman
-Date: 2021
-Availability: https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/helpers.py
 """
 
 import torch

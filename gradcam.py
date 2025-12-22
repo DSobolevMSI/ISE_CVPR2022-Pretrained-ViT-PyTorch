@@ -28,11 +28,26 @@ class GradCam:
         self.target.register_forward_hook(self._get_features_hook)
         self.target.register_forward_hook(self._get_grads_hook)
 
-    # Function to reshape the tensor for visualization
-    def reshape_transform(self, tensor, height=14, width=14):
-        result = tensor[:, 1:, :].reshape(tensor.size(0), height, width, tensor.size(2))
-        result = result.transpose(2, 3).transpose(1, 2)  # Rearrange dimensions to (C, H, W)
-        return result
+    # # Function to reshape the tensor for visualization
+    # def reshape_transform(self, tensor, height=14, width=14):
+    #     result = tensor[:, 1:, :].reshape(tensor.size(0), height, width, tensor.size(2))
+    #     result = result.transpose(2, 3).transpose(1, 2)  # Rearrange dimensions to (C, H, W)
+    #     return result
+    def reshape_transform(self, tensor):
+        # if (B, C, H, W) —— ConvNeXt / ResNet 
+        if tensor.ndim == 4:
+            return tensor
+
+        # if (B, N, C) —— ViT / DeiT / Swin 等
+        if tensor.ndim == 3:
+            if tensor.shape[1] in [197, 577, 785]:  # commonly used patch+cls token dim
+                tensor = tensor[:, 1:, :]  # remove class token
+            B, N, C = tensor.shape
+            H = W = int(N ** 0.5)      # infer H, W
+            tensor = tensor.permute(0, 2, 1).reshape(B, C, H, W)
+            return tensor
+
+        raise ValueError(f"Unsupported tensor shape: {tensor.shape}")
 
     # Function to compute the Grad-CAM heatmap
     def __call__(self, inputs):

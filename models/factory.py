@@ -15,8 +15,8 @@ from timm.models.hub import load_model_config_from_hf
 from .load_local_pretrained_model import load_original_pretrained_model
 
 
-def split_model_name(model_name):
-    model_split = model_name.split(':', 1)
+def split_model_name(model_name):       # deit_base_patch16_224
+    model_split = model_name.split(':', 1)  
     if len(model_split) == 1:
         return '', model_split[0]
     else:
@@ -41,6 +41,8 @@ def create_model(
         scriptable=None,
         exportable=None,
         no_jit=None,
+        edge_aux=False,
+        freeze=False,
         **kwargs):
     """Create a model
 
@@ -58,7 +60,7 @@ def create_model(
         global_pool (str): global pool type (default: 'avg')
         **: other kwargs are model specific
     """
-    source_name, model_name = split_model_name(model_name)
+    source_name, model_name = split_model_name(model_name)      # source_name='', model_name='deit_base_patch16_224'
 
     # Only EfficientNet and MobileNetV3 models have support for batchnorm params or drop_connect_rate passed as args
     is_efficientnet = is_model_in_modules(model_name, ['efficientnet', 'mobilenetv3'])
@@ -85,7 +87,7 @@ def create_model(
         hf_default_cfg, model_name = load_model_config_from_hf(model_name)
         kwargs['external_default_cfg'] = hf_default_cfg  # FIXME revamp default_cfg interface someday
 
-    if is_model(model_name):
+    if is_model(model_name):        # 判断model_name是否在注册表中
         create_fn = model_entrypoint(model_name)
     else:
         raise RuntimeError('Unknown model (%s)' % model_name)
@@ -94,7 +96,7 @@ def create_model(
         model = create_fn(pretrained=pretrained, **kwargs)
 
     if pretrained_path:
-        load_original_pretrained_model(model, pretrained_path)
+        load_original_pretrained_model(model, pretrained_path, edge_aux=edge_aux, freeze=freeze)
 
     if checkpoint_path:
         load_checkpoint(model, checkpoint_path)
