@@ -23,9 +23,10 @@ We successfully reproduced the key results from the CVPR 2022 paper on the **SO3
 ![Overall Top-1 Accuracy Results on SO32 Dataset](inference_results/bar_overall.png) 
 ![Class Average Accuracy Results on SO32 Dataset](inference_results/bar_class_avg.png) -->
 
-<img src="inference_results/bar_overall.png" alt="Overall Top-1 Accuracy Results on SO32 Dataset" width="70%" align="left" style="margin-bottom: 20px;"/>
-
-<img src="inference_results/bar_class_avg.png" alt="Class Average Accuracy Results on SO32 Dataset" width="70%" align="left" style="margin-bottom: 20px;"/>
+<div style="display: flex; justify-content: flex-start; gap: 30px; margin-bottom: 30px;">
+  <img src="inference_results/bar_overall.png" alt="Overall Top-1 Accuracy Results on SO32 Dataset" width="48%"/>
+  <img src="inference_results/bar_class_avg.png" alt="Class Average Accuracy Results on SO32 Dataset" width="48%"/>
+</div>
 
 Additional visualizations (Grad-CAM, confusion matrices, seed comparisons) are available in the repository.
 
