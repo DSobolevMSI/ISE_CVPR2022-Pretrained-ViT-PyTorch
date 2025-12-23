@@ -12,27 +12,35 @@ We successfully reproduced the key results from the CVPR 2022 paper on the **SO3
 | RCDB-21k                          | 93.16%         | **84.34%**              | different with paper's 86.30%  |
 | ImageNet-21k                      | 94.87%         | **86.23%**              | different with paper's 85.61%  |
 
-## Improvment Results on SO32 (Official pre-training weights from ImageNet-22K, 40 epochs)
+## Improvment Results on SO32 (Official pre-training weights, 40 epochs)
 
 | Model                             | Top-1 Accuracy | Class-Average Accuracy | Notes                          |
 |-----------------------------------|----------------|-------------------------|--------------------------------|
 | ConvNeXT                          | 93.48%         | 87.34%                  | increased ~1%                  |
 | Swin Transformer                  | 95.18%         | **88.15%**              | increased ~2%                  |
 
+<!-- 
 ![Overall Top-1 Accuracy Results on SO32 Dataset](inference_results/bar_overall.png) 
-![Class Average Accuracy Results on SO32 Dataset](inference_results/bar_class_avg.png)
+![Class Average Accuracy Results on SO32 Dataset](inference_results/bar_class_avg.png) --> -->
+
+<p align="center">
+  <img src="inference_results/bar_overall.png" alt="Overall Top-1 Accuracy Results on SO32 Dataset" width="800"/>
+</p>
+<p align="center">
+  <img src="inference_results/bar_class_avg.png" alt="Class Average Accuracy Results on SO32 Dataset" width="800"/>
+</p>
 
 Additional visualizations (Grad-CAM, confusion matrices, seed comparisons) are available in the repository.
 
 ## Updates
-**ISE Group Updates (Dec 23, 2025)**
-* Add *inference.py* code for model inference
-* Add *evaluation.py* code for results evaluation, including class average accuracy calculation and confusion matrix generation
-* Add plot codes *draw_gradcam_plot.py*, *draw_seed_plot.py*, and *draw_violin_plot.py*
-* Implement GradCAM in *gradcam.py* for visual explanation and analysis
-* Fix environment setting problems in *py310.yaml* / *requirements.txt*
-* Implement Canny Edge auxiliary/fusion model. Details in *scripts/run_finetune_edge.sh*
-* ExFractalDB and RCDB Construction details in *exe_scrips/*
+
+* Add ```inference.py``` code for model inference
+* Add ```evaluation.py``` code for results evaluation
+* Add plot codes ```draw_gradcam_plot.py```, ```draw_seed_plot.py```, and ```draw_violin_plot.py```
+* Implement GradCAM in ```gradcam.py``` for visual explanation and analysis
+* Fix environment setting problems in ```py310.yaml``` / ```requirements.txt```
+* Implement Canny Edge auxiliary/fusion model. Details in ```scripts/run_finetune_edge.sh```
+* ExFractalDB and RCDB Construction details in ```exe_scrips/```
 * Downloadable pre-training models [[Link](https://drive.google.com/drive/folders/1ikNUxJoMCx3Lx2TMrXfLdIwI6wwK5w_W?usp=sharing)]
 * Original repository [[Link](https://github.com/masora1030/CVPR2022-Pretrained-ViT-PyTorch)]
 
@@ -136,6 +144,7 @@ Draw GradCAM Plot for single experiment: run ```draw_gradcam_plot.py```
 ---
 
 **Project Info**  
+
 This project is completed as a group work for ISE course.
   
 - **Group Members**: Daniil Sobolev, Daniel Zhang, Junyi Liu
