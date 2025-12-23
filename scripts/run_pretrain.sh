@@ -1,28 +1,23 @@
 #! /bin/bash
 
-export CUDA_VISIBLE_DEVICES=6,7
+export CUDA_VISIBLE_DEVICES=
 export WANDB_API_KEY=
 export WANDB_MODE=online
-export WANDB_PROJECT=ISE
-# export MASTER_PORT=29500 # for multiple expr on the same machine
 
-cd /ldap_shared/home/s_ljy/Projects/CVPR2022-Pretrained-ViT-PyTorch # change to project directory
-conda activate vit_env  # activate conda environment
+cd /your/path/to/CVPR2022-Pretrained-ViT-PyTorch # change to project directory
+source /your/path/to/conda/bin/activate vit_env  # activate conda environment
 
+# Pre-training dataset MVFractalDB/rcdb 1000/21k
+PRETRAIN=MVFractalDB
 CLASSES=1000
-SAVE_ROOT=./dataset/MVFractalDB-${CLASSES}/images
-
-# MV-FractalDB Pre-training
 # model size
-MODEL=base
+MODEL=deit_base_patch16_224
 # initial learning rate
 LR=1.0e-3
-# name of dataset
-DATA_NAME=ExFractalDB
 # num of epochs
-EPOCHS=40       # how many epochs to pretrain??
+EPOCHS=90
 # path to train dataset
-SOURCE_DATASET=${SAVE_ROOT}
+SOURCE_DATASET=./dataset/${PRETRAIN}-${CLASSES}/images
 # output dir path
 OUT_DIR=./check_points/${MODEL}/${CLASSES}/pretrain
 # num of GPUs
@@ -34,10 +29,11 @@ LOCAL_BS=64
 
 # environment variable which is the IP address of the machine in rank 0 (need only for multiple nodes)
 # MASTER_ADDR="192.168.1.1"
+# or export MASTER_PORT=29500
 
 mpirun -npernode ${NPERNODE} -np ${NGPUS} \
 python pretrain.py ${SOURCE_DATASET} \
-    --model deit_${MODEL}_patch16_224 --experiment pretrain_deit_${MODEL}_${DATA_NAME}${CLASSES}_${LR} \
+    --model ${MODEL} --experiment pretrain_${MODEL}_${PRETRAIN}${CLASSES}_${LR} \
     --input-size 3 224 224 \
     --sched cosine_iter --epochs ${EPOCHS} --lr ${LR} --weight-decay 0.05 \
     --batch-size ${LOCAL_BS} --opt adamw --num-classes ${CLASSES} \
